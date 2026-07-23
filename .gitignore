@@ -1,0 +1,46 @@
+# Secrets / local env (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+src/*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.egg
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local data + model outputs (parquet, batch JSONL, gold labels)
+data/**
+!data/.gitkeep
+
+# Generated analysis report (contains private Discord aggregates)
+reports/**
+!reports/.gitkeep
+
+# Catch-all for local parquet dumps outside data/
+*.parquet

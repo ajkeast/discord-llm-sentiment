@@ -1,0 +1,15 @@
+google-genai>=1.0.0
+pydantic>=2.0
+pandas>=2.0
+pyarrow>=14.0
+SQLAlchemy>=2.0
+pymysql>=1.1
+python-dotenv>=1.0
+tiktoken>=0.7
+tqdm>=4.66
+scikit-learn>=1.4
+jupyter>=1.0
+ipykernel>=6.0
+matplotlib>=3.8
+seaborn>=0.13
+numpy>=1.26

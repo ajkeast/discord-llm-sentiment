@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "discord-llm-sentiment"
+version = "0.1.0"
+description = "Cost-gated Discord message sentiment pipeline using Gemini"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "google-genai>=1.0.0",
+  "pydantic>=2.0",
+  "pandas>=2.0",
+  "pyarrow>=14.0",
+  "SQLAlchemy>=2.0",
+  "pymysql>=1.1",
+  "python-dotenv>=1.0",
+  "tiktoken>=0.7",
+  "tqdm>=4.66",
+  "scikit-learn>=1.4",
+  "numpy>=1.26",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
