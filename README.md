@@ -1,78 +1,58 @@
-# Discord LLM Sentiment Analysis
+# Understanding Discord Chat with AI
 
-Cost-gated pipeline that scores Discord messages with **Gemini 3.1 Flash-Lite**, using preceding channel context and a rich sentiment schema (polarity, emotions, sarcasm, toxicity).
+This project scores a private Discord archive with a language model — tagging each message for mood, emotion, sarcasm, and toxicity. Below is the simple version of *why* that matters and *what changed* to make it practical.
 
-Built for a private Discord archive (~265k messages): export from MySQL → stratified eval/cost gate → Batch API backfill → nightly incremental scoring.
+## What is sentiment analysis?
 
-## Setup
+**Sentiment analysis** asks: *how does this text feel?*
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate   # or: .venv/bin/pip / .venv/bin/python
-.venv/bin/pip install -r requirements.txt
-.venv/bin/pip install -e .
-cp .env.example .env
-# Fill in GEMINI_API_KEY and MYSQL_* credentials
-```
+A message might be positive ("this update rules"), negative ("this is broken"), neutral ("meeting at 5"), or mixed ("love the idea, hate the bugs"). Richer versions also look for emotions (joy, anger, amusement), sarcasm, and whether the tone is aimed at a person, a group, or a topic.
 
-If your shell aliases `python` to system Python, prefer `.venv/bin/python` / `.venv/bin/pip` explicitly.
+It is a way to turn a mountain of chat into something you can measure and compare over time — not just skim.
 
-**Secrets:** copy `.env.example` → `.env` and never commit `.env`. API keys and MySQL credentials stay local (see `.gitignore`).
+## What is NLP?
 
-## Workflow
+**NLP** stands for **Natural Language Processing**: teaching computers to work with human language — the messy, slangy, context-heavy kind people actually write.
 
-1. **`notebooks/01_eda_and_export.ipynb`** — Export MySQL → Parquet, build context windows, EDA.
-2. **`notebooks/02_eval_sample.ipynb`** — Stratified 1k sample, cost check, gold-label QA gate.
-3. **`notebooks/03_full_run.ipynb`** — Batch API backfill → local parquet **and** upsert into MySQL `message_sentiment`.
+Sentiment analysis is one NLP task. Others include translation, summarization, spam detection, and search. The shared hard problem is that words alone are not enough; meaning depends on context, tone, and community norms.
 
-Do **not** start the full run until the eval notebook’s cost estimate looks right and gold-label quality is acceptable.
+## How was NLP done before LLMs?
 
-### Database + nightly bot
+Before large language models, most systems were narrower and more brittle:
 
-- Table: `message_sentiment` (PK = `messages.id`). Created in MySQL; DDL in `src/sentiment/store.py`.
-- Nightly incremental: `.venv/bin/python -m sentiment.nightly`
-- Integration notes for the Discord bot: [`docs/DISCORD_BOT_NIGHTLY.md`](docs/DISCORD_BOT_NIGHTLY.md)
+1. **Rules and dictionaries** — lists of "good" and "bad" words. Fast, but easy to fool (`sick` can mean cool or ill).
+2. **Classical machine learning** — train a model on hand-labeled examples using word counts or similar features. Better than word lists, but still shallow about context.
+3. **Specialized deep learning** — neural nets trained for one job (e.g. "positive vs negative"). Stronger, but you still needed lots of labeled data, and each new nuance (sarcasm, Discord slang, in-jokes) often meant more labeling and retraining.
 
-### Executive summary (shareable HTML)
+None of these were great at short chat where "lol" can mean genuine laughter, awkwardness, or a soft dismissal — depending on the messages before it.
 
-```bash
-.venv/bin/python scripts/build_executive_summary.py
-open reports/executive_summary.html
-```
+## Why is it different after LLMs?
 
-Regenerates charts/tables from MySQL aggregates in `data/analysis/`. Generated reports are gitignored (they can include private server aggregates).
+**LLMs** (large language models) are trained on huge amounts of text to predict language. Along the way they pick up patterns of tone, irony, and everyday conversation.
 
-## Cost ballpark (Gemini 3.1 Flash-Lite)
+That changes the workflow:
 
-| Stage | Messages | Approx cost |
-|-------|----------|-------------|
-| Eval sample | 1,000 | ~$0.30–0.50 |
-| Full corpus (live) | ~265k | ~$35–45 |
-| Full corpus (Batch API) | ~265k | ~$18–25 |
+- You can describe what you want in plain English ("score polarity, emotions, sarcasm, toxicity") instead of building a custom model from scratch.
+- The model can use **nearby messages as context**, which matters a lot in Discord threads and reply chains.
+- One general model can handle many labels at once — mood, emotion, toxicity — without a separate pipeline for each.
 
-## Output schema (per message)
+It is not magic, and it can still be wrong. But for chat-shaped text, it is a much closer fit than older keyword or single-purpose classifiers.
 
-```json
-{
-  "message_id": "123",
-  "polarity": "positive|negative|neutral|mixed",
-  "polarity_score": -1.0,
-  "emotions": ["amusement"],
-  "sarcasm": true,
-  "toxicity": "none|mild|moderate|severe",
-  "directed_at": "general|person|group|self|topic",
-  "confidence": 0.0,
-  "rationale": "≤15 words"
-}
-```
+## Why run this on a private Discord dataset?
 
-## Project layout
+Public sentiment tools and demos are usually trained on reviews, tweets, or news — not your server's inside jokes, channel culture, or shorthand.
 
-```
-src/sentiment/     # reusable library
-notebooks/         # EDA → eval → full run
-scripts/           # report builder + batch recovery
-docs/              # bot integration notes
-data/              # gitignored local parquet + results
-reports/           # gitignored generated HTML
-```
+Running analysis on **your own archive** lets you:
+
+- See how the mood of a community shifts over months or years
+- Spot channels or stretches of time that turn unusually toxic or negative
+- Study patterns that only make sense with local context (sarcasm, banter, recurring topics)
+- Keep the data private — messages stay in your database; you are not shipping the corpus to a third-party "vibes dashboard"
+
+In short: the interesting signal is in *this* community's language, not a generic model of the internet.
+
+## What this repo does
+
+It takes Discord messages (exported from MySQL), gives each one a little preceding channel context, and asks Gemini to return a structured score per message — polarity, emotions, sarcasm, toxicity, and a short rationale. Results can be stored back in the database and summarized in a report.
+
+For bot / nightly integration details, see [`docs/DISCORD_BOT_NIGHTLY.md`](docs/DISCORD_BOT_NIGHTLY.md).
